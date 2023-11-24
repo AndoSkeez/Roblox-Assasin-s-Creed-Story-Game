@@ -1,0 +1,79 @@
+--// Player Quests
+
+-- Reference to the Players service and quest-related modules
+local players = game.Players
+local quests = require(game:GetService('ServerScriptService').gameHandler.QuestInfo)
+local itemInfo = require(game:GetService('ServerScriptService').gameHandler.QuestItemInfo)
+
+-- Player Added event handler
+players.PlayerAdded:Connect(function(plr)
+    -- Create a Drachmae IntValue for the player
+    local Drachmae = Instance.new("IntValue", plr)
+    Drachmae.Name = 'Drachmae'
+    
+    -- Create a QuestInformation folder for the player
+    local QuestInfo = Instance.new("Folder", plr)
+    QuestInfo.Name = "QuestInformation"
+    
+    -- Loop through each child of QuestInfo
+    for i, v in pairs(QuestInfo:GetChildren()) do
+        local QuestTitle = v:WaitForChild('QuestTitle')
+        local QuestTask = v:WaitForChild('QuestTask')
+        local QuestObjective = v:WaitForChild('QuestObjective')
+        local QuestProgress = v:WaitForChild('QuestProgress')
+        local QuestReward = v:WaitForChild('QuestReward')
+        local TasksCompleted = v:WaitForChild('TasksCompleted')
+        local QuestDescription = v:WaitForChild('QuestDescription')
+        
+        -- Connect a function to QuestTitle change event
+        QuestTitle.Changed:Connect(function(player)
+            QuestProgress.Changed:Connect(function()
+                -- Check if the quest progress has reached or exceeded the objective
+                if QuestProgress.Value >= QuestObjective.Value then
+                    -- Increment TasksCompleted when the objective is met
+                    plr:WaitForChild('QuestInformation').TasksCompleted.Value += 1
+                end
+            end)
+        end)
+    end
+end)
+
+--// Attack System
+
+-- Reference to the NPCs folder
+local NPCs = workspace.NPCs
+
+-- Attack event handler
+game.ReplicatedStorage.Remotes.Attack.OnServerEvent:Connect(function(player, damage)
+    -- Loop through each descendant of NPCs
+    for i, target in pairs(NPCs:GetDescendants()) do
+        -- Check if the target is a Humanoid and not the player itself
+        if target:IsA("Humanoid") and target.Parent.Name ~= player.Name then
+            -- Check if the target's health is greater than 0
+            if target.Health > 0 then
+                -- Check if the target is within a certain distance from the player
+                if (target.Parent.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).magnitude < 5 then
+                    -- Reduce the target's health by the specified damage
+                    target.Health -= damage
+                    -- Check if the target's health has fallen to or below 0
+                    if target.Health <= 0 then
+                        -- Loop through quests and check if the player has a relevant quest
+                        for i, v in pairs(quests) do
+                            if player:FindFirstChild('QuestInformation') then
+                                if player:FindFirstChild('QuestInformation'):WaitForChild('BadBlades').QuestTitle.Value == v.Title then
+                                    -- Loop through itemInfo to find the corresponding item
+                                    for i, v in pairs(itemInfo) do
+                                        if i == target.Parent.Name then
+                                            -- Increment the quest progress when the NPC is defeated
+                                            player:WaitForChild('QuestInformation'):WaitForChild('BadBlades').QuestProgress.Value += 1
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end 
+                end
+            end
+        end
+    end
+end)
