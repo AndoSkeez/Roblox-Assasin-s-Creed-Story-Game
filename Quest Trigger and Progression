@@ -1,0 +1,109 @@
+local quests = require(game:GetService('ServerScriptService').gameHandler.QuestInfo)
+local remote = game:GetService('ReplicatedStorage').Remotes:WaitForChild('QuestChange')
+local replicatedStorage = game:GetService('ReplicatedStorage')
+
+
+script.Parent.Triggered:Connect(function(player)
+	
+
+	local questInfoF = player:FindFirstChild('QuestInformation')
+
+	
+	local function questFolderCreate()
+		local QuestInfo = Instance.new("Folder", questInfoF)
+		QuestInfo.Name = "xyz"
+
+		local QuestTitle = Instance.new("StringValue", QuestInfo)
+		QuestTitle.Name = "QuestTitle"
+		QuestTitle.Value = "Default"
+
+		local QuestTask = Instance.new("StringValue", QuestInfo)
+		QuestTask.Name = "QuestTask"
+		QuestTask.Value = "Default"
+
+		local QuestObjective = Instance.new("IntValue", QuestInfo)
+		QuestObjective.Name = "QuestObjective"
+		QuestObjective.Value = 0
+
+		local QuestProgress = Instance.new("IntValue", QuestInfo)
+		QuestProgress.Name = "QuestProgress"
+		QuestProgress.Value = 0
+
+		local QuestReward = Instance.new("IntValue", QuestInfo)
+		QuestReward.Name = "QuestReward"
+		QuestReward.Value = 0
+
+		local TasksCompleted = Instance.new("IntValue", QuestInfo)
+		TasksCompleted.Name = "TasksCompleted"
+		TasksCompleted.Value = 1
+		
+		local QuestDescription = Instance.new('StringValue', QuestInfo)
+		QuestDescription.Name = "QuestDescription"
+		QuestDescription.Value = "Default"
+	end
+	
+
+	
+	if not questInfoF:FindFirstChild('xyz') then
+		questFolderCreate()
+	end
+	
+	local questInfo = questInfoF:WaitForChild('xyz')
+	local taskIndex = questInfoF:WaitForChild("xyz").TasksCompleted.Value
+	
+	if questInfo:WaitForChild('QuestTask').Value == "Return to "..script.Parent.Parent.Name then
+		player:WaitForChild('Drachmae').Value += quests.xyz.Reward
+	else
+		
+		if questInfo then
+			if questInfo:WaitForChild("QuestTitle").Value == "Default" then
+				if quests.xyz.ExplorationArea == true then
+					local explorationArea = replicatedStorage.ExplorationArea:Clone()
+					explorationArea.Parent = game.Workspace
+					explorationArea.Position = quests.xyz.ExplorationPosition
+				end
+				for i, v in pairs(quests.xyz) do
+
+					if i == "Title" then
+						questInfo:WaitForChild('Quest'..i).Value = v	
+					elseif i == "Task1" then
+
+						questInfo:WaitForChild("QuestTask").Value = v[1]
+						questInfo:WaitForChild("QuestObjective").Value = v[2]
+
+						questInfo:WaitForChild('TasksCompleted').Changed:Connect(function()
+							local taskIndex = questInfo:WaitForChild("TasksCompleted").Value
+							for i, v in pairs(quests.xyz) do 
+								if i == "Task"..taskIndex then
+
+									questInfo:WaitForChild("QuestTask").Value = v[1]
+									questInfo:WaitForChild("QuestObjective").Value = v[2]
+									for i, v in pairs(quests.xyz) do
+										if v == "Story" then
+											remote:FireClient(player, "TransferStoryQuest", "xyz")
+										elseif v == "Side" then
+											remote:FireClient(player, "TransferSideQuest", "xyz")
+										end
+									end
+								end
+								
+							end
+			
+
+						end)
+					elseif i == "Description" then
+						questInfo:WaitForChild("QuestDescription").Value = v
+					end
+				end
+
+			end
+		end
+		for i, v in pairs(quests.xyz) do
+			if v == "Story" then
+				remote:FireClient(player, "TransferStoryQuest", "xyz")
+			elseif v == "Side" then
+				remote:FireClient(player, "TransferSideQuest", "xyz")
+			end
+		end
+	end
+end)
