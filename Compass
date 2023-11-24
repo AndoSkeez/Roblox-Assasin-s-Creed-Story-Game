@@ -1,0 +1,80 @@
+local Smoothness = 30 / 1.5
+
+-- Reference to the player, camera, and compass UI element --
+
+local Player = game.Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Compass = script.Parent
+
+local LastY = 0
+local Units = {
+
+-- Define rotation angles for compass directions --
+	[Compass:WaitForChild("North")]		= -math.pi * 1.00;
+	[Compass:WaitForChild("NorthEast")] = -math.pi * 0.75;
+
+	[Compass:WaitForChild("East")] 		= -math.pi * 0.50;
+	[Compass:WaitForChild("SouthEast")]	= -math.pi * 0.25;
+
+	[Compass:WaitForChild("South")]		=  math.pi * 0.00;
+	[Compass:WaitForChild("SouthWest")]	=  math.pi * 0.25;
+
+	[Compass:WaitForChild("West")]		=  math.pi * 0.50;
+	[Compass:WaitForChild("NorthWest")]	=  math.pi * 0.75;
+
+}
+
+function RestrictAngle(Angle)
+	if Angle < -math.pi then
+		return Angle + math.pi * 2
+	elseif Angle > math.pi then
+		return Angle - math.pi * 2
+	else
+		return Angle
+	end
+end
+
+local Objective = Instance.new("ImageLabel")
+Objective.Name = "Objective"
+Objective.Size = UDim2.new(0, 32, 0, 32)
+Objective.Position = UDim2.new(0.5, 0, 0.5, 0)
+Objective.AnchorPoint = Vector2.new(0.5, 0.5)
+Objective.BackgroundTransparency = 1
+Objective.Image = "rbxassetid://12813438765" -- Replace with your objective icon asset ID
+Objective.Parent = Compass
+
+-- Main loop for updating compass and objective direction --
+
+while true do
+	local WaitTime = wait(0.001)
+
+	local Look = Camera.CoordinateFrame.LookVector
+	local ook = Vector3.new(Look.X, 0, Look.Z).Unit
+	local LookY = math.atan2(Look.Z, Look.X)
+
+	local DifferenceY = RestrictAngle(LookY - LastY)
+	LookY = RestrictAngle(LastY + DifferenceY * WaitTime * Smoothness)
+	LastY = LookY
+
+	for Unit, Rotation in pairs(Units) do
+		Rotation = RestrictAngle(LookY - Rotation)
+		if math.sin(Rotation) > 0 then
+			local CosineRotation = math.cos(Rotation)
+			local CosineRotation2 = CosineRotation * CosineRotation
+
+			Unit.Visible = true
+			Unit.Position = UDim2.new(0.5 + CosineRotation * 0.6, Unit.Position.X.Offset, 0, 3)
+
+			Unit.TextTransparency = -0.25 + 1.25 * CosineRotation2
+		else
+			Unit.Visible = false
+		end
+	end
+
+    -- Calculate and update the rotation of the objective UI element --
+
+	local objectiveDirection = Vector3.new(1, 0, 0) -- Replace with the direction to your objective
+	local angle = math.acos(ook:Dot(objectiveDirection) / (ook.Magnitude * objectiveDirection.Magnitude))
+	local sign = math.sign(ook:Cross(objectiveDirection).Y)
+	Objective.Rotation = sign * math.deg(angle)
+end
